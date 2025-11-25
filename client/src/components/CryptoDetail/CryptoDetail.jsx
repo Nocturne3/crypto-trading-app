@@ -6,6 +6,7 @@ import IndicatorsPanel from './IndicatorsPanel';
 import RecommendationsPanel from './RecommendationsPanel';
 import MultiTimeframePanel from '../Analysis/MultiTimeframePanel';
 import BacktestPanel from '../Analysis/BacktestPanel';
+import DivergencePanel from '../Analysis/DivergencePanel';
 
 /**
  * CryptoDetail Komponente - Enhanced Version
@@ -15,8 +16,9 @@ import BacktestPanel from '../Analysis/BacktestPanel';
  * - Preis-Chart mit Candlesticks
  * - Alle technischen Indikatoren (MACD, RSI, EMA, SMA, Bollinger, ADX, ATR)
  * - Buy/Sell Recommendations mit Entry Quality
- * - Multi-Timeframe Analyse (NEU)
- * - Backtesting (NEU)
+ * - Multi-Timeframe Analyse
+ * - Backtesting
+ * - Divergenz-Erkennung (NEU)
  * - Stop-Loss Empfehlungen
  * 
  * Features:
@@ -37,7 +39,7 @@ export default function CryptoDetail({ symbol, onBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // NEU: Active Tab für erweiterte Analysen
+  // Active Tab für erweiterte Analysen
   const [activeTab, setActiveTab] = useState('recommendations');
 
   /**
@@ -128,9 +130,10 @@ export default function CryptoDetail({ symbol, onBack }) {
   const recommendations = analysis.recommendations;
   const candles = analysis.candles;
 
-  // Tab Configuration
+  // Tab Configuration - NEU: Divergenz hinzugefügt
   const tabs = [
     { id: 'recommendations', label: 'Empfehlung', icon: '📊' },
+    { id: 'divergence', label: 'Divergenz', icon: '📉' },
     { id: 'multiTimeframe', label: 'Multi-TF', icon: '🕐' },
     { id: 'backtest', label: 'Backtest', icon: '📈' },
   ];
@@ -205,7 +208,7 @@ export default function CryptoDetail({ symbol, onBack }) {
         </div>
       </div>
 
-      {/* NEU: Tab Navigation */}
+      {/* Tab Navigation */}
       <div className="flex gap-2 mb-4 border-b border-gray-700 pb-2">
         {tabs.map((tab) => (
           <button
@@ -230,6 +233,10 @@ export default function CryptoDetail({ symbol, onBack }) {
             recommendations={recommendations}
             interval={interval}
           />
+        )}
+        
+        {activeTab === 'divergence' && (
+          <DivergencePanel symbol={symbol} interval={interval} />
         )}
         
         {activeTab === 'multiTimeframe' && (

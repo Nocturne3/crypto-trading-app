@@ -1,9 +1,11 @@
 /**
- * LocalStorage Utility für Portfolio-Verwaltung
+ * LocalStorage Utility für Portfolio-Verwaltung - Enhanced Version
  * 
  * Diese Funktionen verwalten das Portfolio im Browser-LocalStorage.
  * Das Portfolio wird als JSON gespeichert und enthält:
  * - Array von Portfolio-Items mit Symbol, Menge, Einkaufspreis
+ * 
+ * NEU: Erweiterte Notification Settings für Entry Quality, Pullback, etc.
  */
 
 const PORTFOLIO_STORAGE_KEY = 'crypto_portfolio';
@@ -368,7 +370,7 @@ export function isInWatchlist(symbol) {
 }
 
 /**
- * Notification Settings Verwaltung
+ * Notification Settings Verwaltung - ENHANCED
  */
 
 const NOTIFICATION_SETTINGS_STORAGE_KEY = 'crypto_notification_settings';
@@ -382,21 +384,49 @@ export function loadNotificationSettings() {
   try {
     const stored = localStorage.getItem(NOTIFICATION_SETTINGS_STORAGE_KEY);
     if (!stored) {
-      // Default settings
+      // Default settings - NEU: Erweiterte Signal-Typen
       return {
         enabled: true,
         signals: {
+          // Legacy Signale
           STRONG_BUY: true,
           BUY: false,
           HOLD: false,
           SELL: true,
-          STRONG_SELL: true
+          STRONG_SELL: true,
+          // NEU: Erweiterte Alert-Typen
+          PULLBACK: true,           // RSI fällt unter 50 bei bullischem Trend
+          ENTRY_QUALITY: true,      // Entry Quality springt auf >60
+          OVERHEAT: true,           // Neue High-Severity Warnung
+          MULTI_TF_ALIGNMENT: true  // Alle Timeframes werden bullish
         },
         portfolioSellAlerts: true,
-        watchlistAlerts: true
+        watchlistAlerts: true,
+        // NEU: Alert-Service Einstellungen
+        backgroundPolling: true,
+        pollingIntervalMinutes: 5
       };
     }
-    return JSON.parse(stored);
+    
+    // Merge mit neuen Defaults (für Upgrades von alter Version)
+    const parsed = JSON.parse(stored);
+    return {
+      ...parsed,
+      signals: {
+        STRONG_BUY: true,
+        BUY: false,
+        HOLD: false,
+        SELL: true,
+        STRONG_SELL: true,
+        PULLBACK: true,
+        ENTRY_QUALITY: true,
+        OVERHEAT: true,
+        MULTI_TF_ALIGNMENT: true,
+        ...parsed.signals
+      },
+      backgroundPolling: parsed.backgroundPolling !== false,
+      pollingIntervalMinutes: parsed.pollingIntervalMinutes || 5
+    };
   } catch (error) {
     console.error('Error loading notification settings:', error);
     return {
@@ -406,10 +436,16 @@ export function loadNotificationSettings() {
         BUY: false,
         HOLD: false,
         SELL: true,
-        STRONG_SELL: true
+        STRONG_SELL: true,
+        PULLBACK: true,
+        ENTRY_QUALITY: true,
+        OVERHEAT: true,
+        MULTI_TF_ALIGNMENT: true
       },
       portfolioSellAlerts: true,
-      watchlistAlerts: true
+      watchlistAlerts: true,
+      backgroundPolling: true,
+      pollingIntervalMinutes: 5
     };
   }
 }
@@ -537,4 +573,3 @@ export function getPortfolioAlert(symbol) {
   const alerts = loadPortfolioAlerts();
   return alerts[symbol] || null;
 }
-

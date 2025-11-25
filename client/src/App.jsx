@@ -7,9 +7,11 @@ import TradingCapital from './components/TradingCapital/TradingCapital';
 import Dashboard from './components/Dashboard/Dashboard';
 import Settings from './components/Settings/Settings';
 import { healthCheck } from './services/api';
+import { initAlertService, stopAlertService } from './services/alertService';
+import { loadNotificationSettings } from './utils/storage';
 
 /**
- * Haupt-App Komponente
+ * Haupt-App Komponente - Enhanced Version
  * 
  * Verwaltet Navigation zwischen den verschiedenen Views:
  * - Crypto Table (Hauptübersicht)
@@ -20,6 +22,7 @@ import { healthCheck } from './services/api';
  * - Tab-basierte Navigation
  * - Backend Health Check
  * - Error Handling
+ * - NEU: Alert Service für Background-Notifications
  */
 function App() {
   const [activeTab, setActiveTab] = useState('table');
@@ -47,6 +50,46 @@ function App() {
     // Prüfe alle 30 Sekunden
     const interval = setInterval(checkBackend, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  /**
+   * NEU: Initialisiere Alert Service beim App-Start
+   */
+  useEffect(() => {
+    const settings = loadNotificationSettings();
+    
+    // Starte Alert Service wenn aktiviert und Permission vorhanden
+    if (
+      settings.enabled && 
+      settings.backgroundPolling && 
+      'Notification' in window && 
+      Notification.permission === 'granted'
+    ) {
+      const intervalMs = (settings.pollingIntervalMinutes || 5) * 60 * 1000;
+      initAlertService(intervalMs);
+    }
+
+    // Cleanup beim Unmount
+    return () => {
+      stopAlertService();
+    };
+  }, []);
+
+  /**
+   * NEU: Listener für Alert-Klicks (navigiert zum Coin)
+   */
+  useEffect(() => {
+    const handleAlertClick = (event) => {
+      const { symbol } = event.detail;
+      if (symbol) {
+        setSelectedSymbol(symbol);
+      }
+    };
+
+    window.addEventListener('alert-click', handleAlertClick);
+    return () => {
+      window.removeEventListener('alert-click', handleAlertClick);
+    };
   }, []);
 
   /**
@@ -93,7 +136,7 @@ function App() {
               {/* Backend Status */}
               {backendOnline ? (
                 <div className="flex items-center gap-2 text-gray-300 text-sm">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span>Backend Online</span>
                 </div>
               ) : (
@@ -115,7 +158,7 @@ function App() {
               onClick={() => setActiveTab('dashboard')}
               className={`px-6 py-3 font-semibold transition ${
                 activeTab === 'dashboard'
-                  ? 'bg-gray-900 text-white border-b-2 border-gray-500'
+                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}
             >
@@ -125,7 +168,7 @@ function App() {
               onClick={() => setActiveTab('table')}
               className={`px-6 py-3 font-semibold transition ${
                 activeTab === 'table'
-                  ? 'bg-gray-900 text-white border-b-2 border-gray-500'
+                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}
             >
@@ -135,7 +178,7 @@ function App() {
               onClick={() => setActiveTab('portfolio')}
               className={`px-6 py-3 font-semibold transition ${
                 activeTab === 'portfolio'
-                  ? 'bg-gray-900 text-white border-b-2 border-gray-500'
+                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}
             >
@@ -145,7 +188,7 @@ function App() {
               onClick={() => setActiveTab('top-players')}
               className={`px-6 py-3 font-semibold transition ${
                 activeTab === 'top-players'
-                  ? 'bg-gray-900 text-white border-b-2 border-gray-500'
+                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}
             >
@@ -155,7 +198,7 @@ function App() {
               onClick={() => setActiveTab('trading-capital')}
               className={`px-6 py-3 font-semibold transition ${
                 activeTab === 'trading-capital'
-                  ? 'bg-gray-900 text-white border-b-2 border-gray-500'
+                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}
             >
@@ -163,12 +206,13 @@ function App() {
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`px-6 py-3 font-semibold transition ${
+              className={`px-6 py-3 font-semibold transition flex items-center gap-2 ${
                 activeTab === 'settings'
-                  ? 'bg-gray-900 text-white border-b-2 border-gray-500'
+                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}
             >
+              <span>⚙️</span>
               Einstellungen
             </button>
           </div>
@@ -180,7 +224,7 @@ function App() {
         {/* Backend Error Warning */}
         {backendError && (
           <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 mb-6">
-            <div className="text-gray-300 font-semibold">Warnung</div>
+            <div className="text-gray-300 font-semibold">⚠️ Warnung</div>
             <div className="text-gray-400 text-sm mt-1">{backendError}</div>
             <div className="text-gray-500 text-xs mt-2">
               Stelle sicher, dass der Backend-Server auf Port 5001 läuft.
@@ -244,12 +288,6 @@ function App() {
 
             {activeTab === 'settings' && (
               <div>
-                <div className="mb-6">
-                  <h2 className="text-2xl font-semibold mb-2">Einstellungen</h2>
-                  <p className="text-gray-400 text-sm">
-                    Verwalte deine Watchlist und Notification-Einstellungen
-                  </p>
-                </div>
                 <Settings onSymbolSelect={handleSymbolSelect} />
               </div>
             )}
@@ -261,7 +299,7 @@ function App() {
       <footer className="bg-gray-800 border-t border-gray-700 mt-12">
         <div className="container mx-auto px-4 py-4">
           <div className="text-center text-gray-400 text-sm">
-            Crypto Trend Trading App - Daten von Binance API
+            Crypto Trend Trading App v2.0 - Enhanced Alerts & Entry Quality
           </div>
         </div>
       </footer>
