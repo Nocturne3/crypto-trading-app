@@ -6,7 +6,10 @@ import exchangeRoutes from './routes/exchange.js';
 import analysisRoutes from './routes/analysis.js';
 import backtestRoutes from './routes/backtest.js';
 import multiTimeframeRoutes from './routes/multiTimeframe.js';
-import divergenceRoutes from './routes/divergence.js'; // NEU
+import divergenceRoutes from './routes/divergence.js';
+import patternsRoutes from './routes/patterns.js';
+import screenerRoutes from './routes/screener.js';
+import breakoutRoutes from './routes/breakout.js'; // NEU
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -22,18 +25,21 @@ app.use('/api/exchange', exchangeRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/backtest', backtestRoutes);
 app.use('/api/multi-timeframe', multiTimeframeRoutes);
-app.use('/api/divergence', divergenceRoutes); // NEU
+app.use('/api/divergence', divergenceRoutes);
+app.use('/api/patterns', patternsRoutes);
+app.use('/api/screener', screenerRoutes);
+app.use('/api/breakout', breakoutRoutes); // NEU
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running', version: '2.1.0' });
+  res.json({ status: 'ok', message: 'Server is running', version: '2.4.0' });
 });
 
 // API Info
 app.get('/api', (req, res) => {
   res.json({
     name: 'Trading App API',
-    version: '2.1.0',
+    version: '2.4.0',
     endpoints: {
       prices: '/api/prices',
       historical: '/api/historical/:symbol/:interval',
@@ -42,11 +48,17 @@ app.get('/api', (req, res) => {
       backtest: '/api/backtest/:symbol/:interval',
       backtestCompare: '/api/backtest/compare/:symbol/:interval',
       multiTimeframe: '/api/multi-timeframe/:symbol',
-      divergence: '/api/divergence/:symbol/:interval' // NEU
+      divergence: '/api/divergence/:symbol/:interval',
+      patterns: '/api/patterns/:symbol/:interval',
+      screener: '/api/screener',
+      screenerQuick: '/api/screener/quick',
+      breakout: '/api/breakout/:symbol/:interval', // NEU
+      breakoutScan: '/api/breakout/scan/:interval' // NEU
     }
   });
 });
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🎯 Breakout Scanner: http://localhost:${PORT}/api/breakout/scan/4h`);
 });

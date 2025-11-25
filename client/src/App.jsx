@@ -6,27 +6,31 @@ import CryptoDetail from './components/CryptoDetail/CryptoDetail';
 import TradingCapital from './components/TradingCapital/TradingCapital';
 import Dashboard from './components/Dashboard/Dashboard';
 import Settings from './components/Settings/Settings';
+import ScreenerPanel from './components/Screener/ScreenerPanel';
+import BreakoutScanner from './components/Analysis/BreakoutScanner';
 import { healthCheck } from './services/api';
-import { initAlertService, stopAlertService } from './services/alertService';
-import { loadNotificationSettings } from './utils/storage';
 
 /**
- * Haupt-App Komponente - Enhanced Version
+ * Haupt-App Komponente - v2.4
  * 
  * Verwaltet Navigation zwischen den verschiedenen Views:
+ * - Dashboard
+ * - Breakout Scanner (NEU)
+ * - Screener
  * - Crypto Table (Hauptübersicht)
  * - Portfolio
  * - Top Players
+ * - Trading Capital
+ * - Settings
  * 
  * Features:
  * - Tab-basierte Navigation
  * - Backend Health Check
  * - Error Handling
- * - NEU: Alert Service für Background-Notifications
  */
 function App() {
-  const [activeTab, setActiveTab] = useState('table');
-  const [selectedSymbol, setSelectedSymbol] = useState(null); // Ausgewähltes Symbol für Detail-Ansicht
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedSymbol, setSelectedSymbol] = useState(null);
   const [backendOnline, setBackendOnline] = useState(false);
   const [backendError, setBackendError] = useState(null);
 
@@ -47,60 +51,15 @@ function App() {
     };
 
     checkBackend();
-    // Prüfe alle 30 Sekunden
     const interval = setInterval(checkBackend, 30000);
     return () => clearInterval(interval);
   }, []);
 
   /**
-   * NEU: Initialisiere Alert Service beim App-Start
-   */
-  useEffect(() => {
-    const settings = loadNotificationSettings();
-    
-    // Starte Alert Service wenn aktiviert und Permission vorhanden
-    if (
-      settings.enabled && 
-      settings.backgroundPolling && 
-      'Notification' in window && 
-      Notification.permission === 'granted'
-    ) {
-      const intervalMs = (settings.pollingIntervalMinutes || 5) * 60 * 1000;
-      initAlertService(intervalMs);
-    }
-
-    // Cleanup beim Unmount
-    return () => {
-      stopAlertService();
-    };
-  }, []);
-
-  /**
-   * NEU: Listener für Alert-Klicks (navigiert zum Coin)
-   */
-  useEffect(() => {
-    const handleAlertClick = (event) => {
-      const { symbol } = event.detail;
-      if (symbol) {
-        setSelectedSymbol(symbol);
-      }
-    };
-
-    window.addEventListener('alert-click', handleAlertClick);
-    return () => {
-      window.removeEventListener('alert-click', handleAlertClick);
-    };
-  }, []);
-
-  /**
-   * Handle Portfolio Update (wenn Coin hinzugefügt wird)
+   * Handle Portfolio Update
    */
   const handlePortfolioUpdate = () => {
-    // Wenn wir auf Portfolio-Tab sind, aktualisiere die Anzeige
-    if (activeTab === 'portfolio') {
-      // Portfolio-Komponente wird automatisch aktualisiert durch Polling
-      // Hier könnten wir zusätzliche Aktionen durchführen
-    }
+    // Portfolio-Komponente wird automatisch aktualisiert durch Polling
   };
 
   /**
@@ -122,8 +81,20 @@ function App() {
    */
   const handleNavigate = (tab) => {
     setActiveTab(tab);
-    setSelectedSymbol(null); // Verlasse Detail-Ansicht falls aktiv
+    setSelectedSymbol(null);
   };
+
+  // Tab-Konfiguration
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'breakout', label: 'Breakout', icon: '🎯' },
+    { id: 'screener', label: 'Screener', icon: '🔍' },
+    { id: 'table', label: 'Alle Coins', icon: '📋' },
+    { id: 'portfolio', label: 'Portfolio', icon: '💼' },
+    { id: 'top-players', label: 'Top Players', icon: '🏆' },
+    { id: 'trading-capital', label: 'Capital', icon: '💰' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' }
+  ];
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -133,18 +104,18 @@ function App() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Crypto Trend Trading</h1>
             <div className="flex items-center gap-4">
+              {/* Version Badge */}
+              <span className="text-xs bg-gray-700 px-2 py-1 rounded">v2.4</span>
+              
               {/* Backend Status */}
-              {backendOnline ? (
-                <div className="flex items-center gap-2 text-gray-300 text-sm">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Backend Online</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-gray-500 text-sm">
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                  <span>Backend Offline</span>
-                </div>
-              )}
+              <div className={`flex items-center gap-2 text-sm ${
+                backendOnline ? 'text-green-400' : 'text-gray-500'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  backendOnline ? 'bg-green-400' : 'bg-gray-600'
+                }`}></div>
+                <span>{backendOnline ? 'Online' : 'Offline'}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -153,68 +124,24 @@ function App() {
       {/* Navigation Tabs */}
       <nav className="bg-gray-800 border-b border-gray-700">
         <div className="container mx-auto px-4">
-          <div className="flex gap-1">
-          <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'dashboard'
-                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => setActiveTab('table')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'table'
-                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
-            >
-              Crypto Table
-            </button>
-            <button
-              onClick={() => setActiveTab('portfolio')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'portfolio'
-                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
-            >
-              Portfolio
-            </button>
-            <button
-              onClick={() => setActiveTab('top-players')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'top-players'
-                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
-            >
-              Top Players
-            </button>
-            <button
-              onClick={() => setActiveTab('trading-capital')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'trading-capital'
-                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
-            >
-              Trading Capital
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`px-6 py-3 font-semibold transition flex items-center gap-2 ${
-                activeTab === 'settings'
-                  ? 'bg-gray-900 text-white border-b-2 border-blue-500'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
-            >
-              <span>⚙️</span>
-              Einstellungen
-            </button>
+          <div className="flex gap-1 overflow-x-auto">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setSelectedSymbol(null);
+                }}
+                className={`px-4 py-3 font-semibold transition whitespace-nowrap flex items-center gap-2 ${
+                  activeTab === tab.id
+                    ? 'bg-gray-900 text-white border-b-2 border-blue-500'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            ))}
           </div>
         </div>
       </nav>
@@ -238,10 +165,41 @@ function App() {
         ) : (
           /* Tab Content */
           <>
+            {activeTab === 'dashboard' && (
+              <Dashboard 
+                onSymbolSelect={handleSymbolSelect}
+                onNavigate={handleNavigate}
+              />
+            )}
+
+            {activeTab === 'breakout' && (
+              <div>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-semibold mb-2">🎯 Breakout Scanner</h2>
+                  <p className="text-gray-400 text-sm">
+                    Finde Coins vor dem Ausbruch - Squeeze, Accumulation, Konsolidierung
+                  </p>
+                </div>
+                <BreakoutScanner onSelectCoin={handleSymbolSelect} />
+              </div>
+            )}
+
+            {activeTab === 'screener' && (
+              <div>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-semibold mb-2">🔍 Screener</h2>
+                  <p className="text-gray-400 text-sm">
+                    Scanne alle Coins nach deinen Kriterien - Score, RSI, Pattern, Divergenzen
+                  </p>
+                </div>
+                <ScreenerPanel onSelectCoin={handleSymbolSelect} />
+              </div>
+            )}
+
             {activeTab === 'table' && (
               <div>
                 <div className="mb-6">
-                  <h2 className="text-2xl font-semibold mb-2">Top 50 Coins</h2>
+                  <h2 className="text-2xl font-semibold mb-2">📋 Top 50 Coins</h2>
                   <p className="text-gray-400 text-sm">
                     Übersicht aller Coins mit Live-Preisen und Buy/Sell-Empfehlungen
                   </p>
@@ -256,7 +214,7 @@ function App() {
             {activeTab === 'portfolio' && (
               <div>
                 <div className="mb-6">
-                  <h2 className="text-2xl font-semibold mb-2">Mein Portfolio</h2>
+                  <h2 className="text-2xl font-semibold mb-2">💼 Mein Portfolio</h2>
                   <p className="text-gray-400 text-sm">
                     Verwalte deine Coins und verfolge Gewinn/Verlust
                   </p>
@@ -266,28 +224,21 @@ function App() {
             )}
 
             {activeTab === 'top-players' && (
-              <div>
-                <TopPlayers onSymbolSelect={handleSymbolSelect} />
-              </div>
+              <TopPlayers onSymbolSelect={handleSymbolSelect} />
             )}
 
             {activeTab === 'trading-capital' && (
-              <div>
-                <TradingCapital onSymbolSelect={handleSymbolSelect} />
-              </div>
-            )}
-
-            {activeTab === 'dashboard' && (
-              <div>
-                <Dashboard 
-                  onSymbolSelect={handleSymbolSelect}
-                  onNavigate={handleNavigate}
-                />
-              </div>
+              <TradingCapital onSymbolSelect={handleSymbolSelect} />
             )}
 
             {activeTab === 'settings' && (
               <div>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-semibold mb-2">⚙️ Einstellungen</h2>
+                  <p className="text-gray-400 text-sm">
+                    Verwalte deine Watchlist und Notification-Einstellungen
+                  </p>
+                </div>
                 <Settings onSymbolSelect={handleSymbolSelect} />
               </div>
             )}
@@ -299,7 +250,7 @@ function App() {
       <footer className="bg-gray-800 border-t border-gray-700 mt-12">
         <div className="container mx-auto px-4 py-4">
           <div className="text-center text-gray-400 text-sm">
-            Crypto Trend Trading App v2.0 - Enhanced Alerts & Entry Quality
+            Crypto Trend Trading App v2.4 - Daten von Binance API
           </div>
         </div>
       </footer>

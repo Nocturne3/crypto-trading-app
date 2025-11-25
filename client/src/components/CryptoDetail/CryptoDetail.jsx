@@ -7,9 +7,11 @@ import RecommendationsPanel from './RecommendationsPanel';
 import MultiTimeframePanel from '../Analysis/MultiTimeframePanel';
 import BacktestPanel from '../Analysis/BacktestPanel';
 import DivergencePanel from '../Analysis/DivergencePanel';
+import PatternPanel from '../Analysis/PatternPanel';
+import BreakoutPanel from '../Analysis/BreakoutPanel';
 
 /**
- * CryptoDetail Komponente - Enhanced Version
+ * CryptoDetail Komponente - v2.4
  * 
  * Zeigt detaillierte Informationen zu einer einzelnen Crypto:
  * - Live Preis und 24h Statistiken
@@ -18,7 +20,9 @@ import DivergencePanel from '../Analysis/DivergencePanel';
  * - Buy/Sell Recommendations mit Entry Quality
  * - Multi-Timeframe Analyse
  * - Backtesting
- * - Divergenz-Erkennung (NEU)
+ * - Divergenz-Erkennung
+ * - Support/Resistance & Pattern
+ * - Breakout-Erkennung (NEU)
  * - Stop-Loss Empfehlungen
  * 
  * Features:
@@ -26,16 +30,12 @@ import DivergencePanel from '../Analysis/DivergencePanel';
  * - Zeitrahmen-Auswahl (1h, 4h, 1d)
  * - Interaktive Charts
  * - Tab-Navigation für erweiterte Analysen
- * 
- * Props:
- * - symbol: Crypto Symbol (z.B. 'BTC')
- * - onBack: Callback-Funktion für Zurück-Button
  */
 export default function CryptoDetail({ symbol, onBack }) {
   const [currentPrice, setCurrentPrice] = useState(null);
   const [priceData, setPriceData] = useState(null);
   const [analysis, setAnalysis] = useState(null);
-  const [interval, setInterval] = useState('1h');
+  const [interval, setInterval] = useState('4h');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -130,9 +130,11 @@ export default function CryptoDetail({ symbol, onBack }) {
   const recommendations = analysis.recommendations;
   const candles = analysis.candles;
 
-  // Tab Configuration - NEU: Divergenz hinzugefügt
+  // Tab Configuration - NEU: Breakout hinzugefügt
   const tabs = [
     { id: 'recommendations', label: 'Empfehlung', icon: '📊' },
+    { id: 'breakout', label: 'Breakout', icon: '🎯' },
+    { id: 'patterns', label: 'S/R & Pattern', icon: '📐' },
     { id: 'divergence', label: 'Divergenz', icon: '📉' },
     { id: 'multiTimeframe', label: 'Multi-TF', icon: '🕐' },
     { id: 'backtest', label: 'Backtest', icon: '📈' },
@@ -209,12 +211,12 @@ export default function CryptoDetail({ symbol, onBack }) {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 mb-4 border-b border-gray-700 pb-2">
+      <div className="flex gap-2 mb-4 border-b border-gray-700 pb-2 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-t text-sm font-semibold transition flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-t text-sm font-semibold transition flex items-center gap-2 whitespace-nowrap ${
               activeTab === tab.id
                 ? 'bg-gray-800 text-white border-b-2 border-blue-500'
                 : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/50'
@@ -233,6 +235,14 @@ export default function CryptoDetail({ symbol, onBack }) {
             recommendations={recommendations}
             interval={interval}
           />
+        )}
+        
+        {activeTab === 'breakout' && (
+          <BreakoutPanel symbol={symbol} interval={interval} />
+        )}
+        
+        {activeTab === 'patterns' && (
+          <PatternPanel symbol={symbol} interval={interval} />
         )}
         
         {activeTab === 'divergence' && (
